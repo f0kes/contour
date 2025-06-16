@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://ej7cdlfoyv2q"]
+
+[ext_resource type="Script" uid="uid://cqraw4li30kd2" path="res://scripts/marching_squares_git/root.gd" id="1_0wsuo"]
+[ext_resource type="Script" uid="uid://clufynpfjbe7y" path="res://scripts/marching_squares_git/marching_sqr_main.gd" id="2_x1ch5"]
+
+[node name="MarchingSquares" type="Node2D"]
+script = ExtResource("1_0wsuo")
+
+[node name="MarchingSquaresGit" type="Node2D" parent="."]
+script = ExtResource("2_x1ch5")
+size_x = 256
+size_y = 256
+metadata/_custom_type_script = "uid://clufynpfjbe7y"
+
+[node name="OffsetMoveTimer" type="Timer" parent="."]
+wait_time = 0.1
