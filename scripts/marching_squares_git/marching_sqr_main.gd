@@ -1,6 +1,8 @@
 extends Node2D
 class_name MarchingSquaresGit
 
+@export var unit_scene: PackedScene
+
 @export var size_x: int = 50
 @export var size_y: int = 50
 @export var grid_scale: int = 25
@@ -42,6 +44,7 @@ func _ready() -> void:
 	setup_camera()
 	setup_noise()
 	setup_systems()
+	#setup_units()
 	update_chunks()
 
 func setup_camera():
@@ -64,6 +67,17 @@ func setup_systems():
 	chunk_manager = ChunkManager.new(noise, noise_offset_vector, influence_system)
 	marching_renderer = MarchingRenderer.new(CONFIGURATIONS, grid_scale, grid_offset_vector)
 
+func setup_units():
+	for i in range(0, 10):
+		spawn_unit(Vector2(randf_range(0, size_x * grid_scale), randf_range(0, size_y * grid_scale)))
+
+
+func spawn_unit(pos: Vector2):
+	var unit = unit_scene.instantiate()
+	unit.global_position = pos
+	add_child(unit)
+	influence_system.add_radiant(unit, 10.0, 5.0)
+
 func _input(event):
 	# Handle camera input first
 	if camera_controller.handle_input(event):
@@ -82,6 +96,8 @@ func _input(event):
 			KEY_R:
 				influence_system.initialize_matrix()
 				update_chunks()
+			KEY_1:
+				spawn_unit(get_global_mouse_position())
 	if painting:
 		if event is InputEventMouseMotion:
 			var world_pos = get_global_mouse_position()

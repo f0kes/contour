@@ -1,0 +1,11 @@
+[gd_scene load_steps=3 format=3 uid="uid://dbpy0w0g8o4cl"]
+
+[ext_resource type="Script" uid="uid://u3h2qo7g8vnx" path="res://scripts/Tween/RandomMove.gd" id="1_k673f"]
+[ext_resource type="Texture2D" uid="uid://yw6l0l253srb" path="res://icon.svg" id="2_1jvru"]
+
+[node name="Unit" type="Node2D"]
+script = ExtResource("1_k673f")
+metadata/_custom_type_script = "uid://u3h2qo7g8vnx"
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_1jvru")
