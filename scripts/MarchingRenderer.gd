@@ -24,7 +24,8 @@ func draw_all(
 	node: Node2D, bounds: Dictionary, mip_level: int,
 	chunk_manager: ChunkManager, influence_system: InfluenceSystem,
 	dot_size: float, dot_color_filled: Color, dot_color_empty: Color,
-	line_color: Color, influence_color_positive: Color, influence_color_negative: Color
+	line_color: Color, influence_color_positive: Color, influence_color_negative: Color,
+	camera_zoom: float = 1.0
 ):
 	# Clear previous meshes
 	influence_mesh.clear_surfaces()
@@ -33,8 +34,8 @@ func draw_all(
 	
 	# Build meshes
 	build_influence_mesh(bounds, mip_level, influence_system, influence_color_positive, influence_color_negative)
-	build_dots_mesh(bounds, mip_level, chunk_manager, dot_size, dot_color_filled, dot_color_empty)
-	build_lines_mesh(bounds, mip_level, chunk_manager, line_color)
+	build_dots_mesh(bounds, mip_level, chunk_manager, dot_size, dot_color_filled, dot_color_empty, camera_zoom)
+	build_lines_mesh(bounds, mip_level, chunk_manager, line_color, camera_zoom)
 	
 	# Render meshes
 	render_mesh(node, influence_mesh)
@@ -94,7 +95,7 @@ func build_influence_mesh(
 func build_dots_mesh(
 	bounds: Dictionary, mip_level: int,
 	chunk_manager: ChunkManager,
-	dot_size: float, dot_color_filled: Color, dot_color_empty: Color
+	dot_size: float, dot_color_filled: Color, dot_color_empty: Color, camera_zoom: float = 1.0
 ):
 	var vertices: PackedVector2Array = []
 	var colors: PackedColorArray = []
@@ -108,8 +109,9 @@ func build_dots_mesh(
 			var value = chunk_manager.get_raw_value_at(x, y, mip_level)
 			var color = dot_color_filled if value > 0 else dot_color_empty
 			var center = Vector2(x, y) * grid_scale + grid_offset_vector
-			var this_dot_size = max(dot_size * abs(value), 2)
-			this_dot_size = min(this_dot_size, 7)
+			var this_dot_size = max(dot_size / camera_zoom * abs(value), 2 / camera_zoom)
+			#var this_dot_size = dot_size
+			#this_dot_size = min(this_dot_size, 7)
 			# Create circle vertices
 			var center_index = vertex_count
 			vertices.append(center)
@@ -143,14 +145,14 @@ func build_dots_mesh(
 
 func build_lines_mesh(
 	bounds: Dictionary, mip_level: int,
-	chunk_manager: ChunkManager, line_color: Color
+	chunk_manager: ChunkManager, line_color: Color, camera_zoom: float = 1.0
 ):
 	var vertices: PackedVector2Array = []
 	var colors: PackedColorArray = []
 	var indices: PackedInt32Array = []
 	var vertex_count = 0
 	
-	var line_width = max(2.0 / mip_level, 1.5)
+	var line_width = 2.0 / camera_zoom
 	
 	var mip_bounds = {
 		"min_x": bounds.min_x - (bounds.min_x % mip_level),

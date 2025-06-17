@@ -5,9 +5,9 @@ var camera: Camera2D
 var dragging: bool = false
 var drag_start_position: Vector2
 var drag_start_camera_position: Vector2
-var zoom_factor: float = 1.0
-var min_zoom: float = 1.1
-var max_zoom: float = 50.0
+var zoom_factor: float = 1.0 # 1.0
+var min_zoom: float = 0.26 # 1.1
+var max_zoom: float = 50.0 # 50.0
 var previous_mip_level: int = 1
 var on_mip_map_change: Callable = Callable()
 var zoom_disabled: bool = false

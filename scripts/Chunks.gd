@@ -9,6 +9,10 @@ var noise: FastNoiseLite
 var noise_offset_vector: Vector2
 var influence_system: InfluenceSystem
 
+var max_concurrent_chunks: int = 4 # Maximum chunks loading at once
+var chunk_queue: Array = [] # Queue of chunks waiting to be loaded
+
+
 func _init(noise_instance: FastNoiseLite, offset: Vector2, inf_system: InfluenceSystem):
 	noise = noise_instance
 	noise_offset_vector = offset
@@ -46,6 +50,32 @@ func generate_chunk(chunk_coord: Vector2i, mip_level: int):
 	
 	chunk_matrix_cache[chunk_key] = chunk_data
 	chunk_raw_cache[chunk_key] = chunk_raw_data
+
+func queue_chunk_generation(chunk_coord: Vector2i, mip_level: int):
+	var chunk_key = str(chunk_coord) + "_" + str(mip_level)
+	# Skip if already cached
+	if chunk_key in chunk_matrix_cache:
+		return
+	
+	# Skip if already in queue (this is probably the performance killer)
+	for queued_item in chunk_queue:
+		if queued_item.chunk_key == chunk_key:
+			return
+	chunk_queue.append({
+		"chunk_coord": chunk_coord,
+		"mip_level": mip_level,
+		"chunk_key": chunk_key
+	})
+
+func process_chunk_queue():
+	# Start new chunk generations if under the limit
+	for i in range(max_concurrent_chunks):
+		if chunk_queue.is_empty():
+			break
+		var chunk_item = chunk_queue.pop_front()
+		
+		generate_chunk(chunk_item.chunk_coord, chunk_item.mip_level)
+
 
 func get_value_at(x: int, y: int, mip_level: int) -> int:
 	var chunk_coord = world_to_chunk(Vector2i(x, y))

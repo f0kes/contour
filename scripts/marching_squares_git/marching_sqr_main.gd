@@ -53,6 +53,7 @@ func setup_camera():
 	camera.enabled = true
 	camera_controller = CameraController.new(camera, update_chunks)
 	camera.zoom = Vector2(1., 1.2)
+	camera.position = Vector2(size_x * grid_scale / 2, size_y * grid_scale / 2)
 
 	camera_controller.zoom_disabled = false
 
@@ -137,11 +138,21 @@ func update_chunks() -> void:
 func ensure_visible_chunks_exist():
 	var chunks_needed = get_chunks_in_view()
 	var mip_level = camera_controller.get_mip_level()
-	
+	var i = 0
 	for chunk_coord in chunks_needed:
+		if i >= chunk_manager.max_concurrent_chunks:
+			break
+		i += 1
 		var chunk_key = str(chunk_coord) + "_" + str(mip_level)
 		if chunk_key not in chunk_manager.chunk_matrix_cache:
 			chunk_manager.generate_chunk(chunk_coord, mip_level)
+
+func update_dirty_chunks():
+	var mip_level = camera_controller.get_mip_level()
+	for chunk_coord in chunk_manager.dirty_chunks:
+		chunk_manager.generate_chunk(chunk_coord, mip_level)
+	chunk_manager.dirty_chunks.clear()
+	queue_redraw()
 
 func get_chunks_in_view() -> Array:
 	var bounds = get_visible_grid_bounds(1)
@@ -157,12 +168,6 @@ func get_chunks_in_view() -> Array:
 	
 	return chunks_needed
 
-func update_dirty_chunks():
-	var mip_level = camera_controller.get_mip_level()
-	for chunk_coord in chunk_manager.dirty_chunks:
-		chunk_manager.generate_chunk(chunk_coord, mip_level)
-	chunk_manager.dirty_chunks.clear()
-	queue_redraw()
 
 func get_visible_grid_bounds(padding: int) -> Dictionary:
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -189,12 +194,12 @@ func get_visible_grid_bounds(padding: int) -> Dictionary:
 func _draw() -> void:
 	var mip_level = camera_controller.get_mip_level()
 	var bounds = get_visible_grid_bounds(2)
-	
+	var camera_zoom = camera_controller.zoom_factor
 	marching_renderer.draw_all(
 		self, bounds, mip_level,
 		chunk_manager, influence_system,
 		dot_size, dot_color_filled, dot_color_empty,
-		line_color, influence_color_positive, influence_color_negative
+		line_color, influence_color_positive, influence_color_negative, camera_zoom
 	)
 
 # Public interface
@@ -205,7 +210,7 @@ func set_size(new_size_x: int, new_size_y: int):
 	size_x = new_size_x
 	size_y = new_size_y
 	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
-	
+	update_chunks()
 
 func get_zoom_info() -> String:
 	return "Zoom: %.2f, Mip Level: %d" % [camera_controller.zoom_factor, camera_controller.get_mip_level()]

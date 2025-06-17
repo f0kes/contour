@@ -4,7 +4,6 @@ class_name InfluenceSystem
 var influence_matrix: Array = []
 var size_x: int
 var size_y: int
-var influence_radius: int = 4
 var influence_strength: float = 1.0
 
 var radiants: Dictionary = {} # id -> RadiantSource
@@ -42,6 +41,7 @@ func _init(width: int, height: int, p_world_to_grid: Callable, p_mark_dirty: Cal
 func update(delta):
 	radiance_update_timer += delta
 	if radiance_update_timer >= radiance_update_interval:
+		apply_radiant_pressure()
 		update_radiants()
 		radiance_update_timer = 0.0
 
@@ -77,6 +77,14 @@ func update_radiants():
 		
 		radiant.previous_position = current_pos
 
+func apply_radiant_pressure():
+	for radiant in radiants.values():
+		add_influence_until(
+			world_to_grid.call(radiant.node.global_position),
+			radiant.strength,
+			0.3,
+			radiant.radius
+		)
 func add_radiant(node: Node2D, strength: float, radius: float = 5.0) -> int:
 	var id = next_radiant_id
 	next_radiant_id += 1
@@ -99,7 +107,7 @@ func initialize_matrix():
 			influence_matrix[x].append(0.0)
 
 
-func add_influence(center: Vector2i, strength: float):
+func add_influence(center: Vector2i, strength: float, influence_radius: int = 4):
 	for dx in range(-influence_radius, influence_radius + 1):
 		for dy in range(-influence_radius, influence_radius + 1):
 			var x = center.x + dx
@@ -114,9 +122,32 @@ func add_influence(center: Vector2i, strength: float):
 					new_influence = clamp(new_influence, -20.0, 20.0)
 					influence_matrix[x][y] = new_influence
 					mark_dirty.call(Vector2i(x, y))
+
+func add_influence_until(center: Vector2i, strength: float, max_influence: float, influence_radius: int = 4):
+	for dx in range(-influence_radius, influence_radius + 1):
+		for dy in range(-influence_radius, influence_radius + 1):
+			var x = center.x + dx
+			var y = center.y + dy
+			
+			if x >= 0 and x < size_x and y >= 0 and y < size_y:
+				var current_influence = influence_matrix[x][y]
+				var same_sign = sign(current_influence) == sign(max_influence)
+				var magnitude_over_max = abs(current_influence) >= abs(max_influence)
+				if magnitude_over_max && same_sign:
+					continue
+				var distance = Vector2(dx, dy).length()
+				if distance <= influence_radius:
+					var falloff = 1.0 - (distance / influence_radius)
+					var new_influence = influence_matrix[x][y]
+					new_influence += strength * falloff
+					new_influence = clamp(new_influence, -20.0, 20.0)
+					influence_matrix[x][y] = new_influence
+					mark_dirty.call(Vector2i(x, y))
 	
 	
 func sample_influence_mipped(x: int, y: int, mip_level: int) -> float:
+	if x < 0 or x >= size_x or y < 0 or y >= size_y:
+		return 0.0
 	var base_influence = influence_matrix[x][y]
 	var radiant_value = 0.0
 	
