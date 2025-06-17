@@ -63,13 +63,24 @@ func setup_noise():
 	noise.frequency = 0.05
 
 func setup_systems():
-	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid)
+	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
 	chunk_manager = ChunkManager.new(noise, noise_offset_vector, influence_system)
 	marching_renderer = MarchingRenderer.new(CONFIGURATIONS, grid_scale, grid_offset_vector)
 
 func setup_units():
 	for i in range(0, 10):
 		spawn_unit(Vector2(randf_range(0, size_x * grid_scale), randf_range(0, size_y * grid_scale)))
+
+func _process(delta: float) -> void:
+	influence_system.update(delta)
+	paint(delta)
+	update_chunks()
+
+func paint(delta: float):
+	if painting:
+		var world_pos = get_global_mouse_position()
+		var grid_pos = world_to_grid(world_pos)
+		add_influence(grid_pos, paint_strength)
 
 
 func spawn_unit(pos: Vector2):
@@ -81,7 +92,6 @@ func spawn_unit(pos: Vector2):
 func _input(event):
 	# Handle camera input first
 	if camera_controller.handle_input(event):
-		update_chunks()
 		return
 	
 	if event is InputEventMouseButton and event.pressed:
@@ -95,15 +105,10 @@ func _input(event):
 		match event.keycode:
 			KEY_R:
 				influence_system.initialize_matrix()
-				update_chunks()
 			KEY_1:
 				spawn_unit(get_global_mouse_position())
 	if painting:
-		if event is InputEventMouseMotion:
-			var world_pos = get_global_mouse_position()
-			var grid_pos = world_to_grid(world_pos)
-			add_influence(grid_pos, paint_strength)
-		elif event is InputEventMouseButton and not event.pressed:
+		if event is InputEventMouseButton and not event.pressed:
 			painting = false
 
 func start_painting(strength: float):
@@ -118,11 +123,12 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 
 func add_influence(center: Vector2i, strength: float):
 	var affected_chunks = influence_system.add_influence(center, strength)
-	for chunk_coord in affected_chunks:
-		if chunk_coord not in chunk_manager.dirty_chunks:
-			chunk_manager.dirty_chunks.append(chunk_coord)
-	update_chunks()
+	
 
+func mark_dirty(coord: Vector2i):
+	var chunk_coord = chunk_manager.world_to_chunk(coord)
+	if chunk_coord not in chunk_manager.dirty_chunks:
+		chunk_manager.dirty_chunks.append(chunk_coord)
 func update_chunks() -> void:
 	ensure_visible_chunks_exist()
 	update_dirty_chunks()
@@ -198,8 +204,8 @@ func increment_noise_offset():
 func set_size(new_size_x: int, new_size_y: int):
 	size_x = new_size_x
 	size_y = new_size_y
-	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid)
-	update_chunks()
+	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
+	
 
 func get_zoom_info() -> String:
 	return "Zoom: %.2f, Mip Level: %d" % [camera_controller.zoom_factor, camera_controller.get_mip_level()]
