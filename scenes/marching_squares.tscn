@@ -8,8 +8,8 @@ script = ExtResource("1_0wsuo")
 
 [node name="MarchingSquaresGit" type="Node2D" parent="."]
 script = ExtResource("2_x1ch5")
-size_x = 256
-size_y = 256
+size_x = 2560
+size_y = 2560
 metadata/_custom_type_script = "uid://clufynpfjbe7y"
 
 [node name="OffsetMoveTimer" type="Timer" parent="."]
