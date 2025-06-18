@@ -2,6 +2,8 @@ extends Node2D
 class_name MarchingSquaresGit
 
 @export var unit_scene: PackedScene
+@export var hotbar_scene: PackedScene
+@export var building_definitions: BuildingDefinitions
 
 @export var size_x: int = 50
 @export var size_y: int = 50
@@ -17,11 +19,19 @@ class_name MarchingSquaresGit
 @export var influence_color_positive: Color = Color.RED
 @export var influence_color_negative: Color = Color.BLUE
 
+
 # Systems
 var camera_controller: CameraController
 var influence_system: InfluenceSystem
 var chunk_manager: ChunkManager
 var marching_renderer: MarchingRenderer
+
+var canvas_layer: CanvasLayer
+var hotbar: MyHotbar
+
+var building_system: BuildingSystem
+var building_mode: bool = false
+
 
 # Noise configuration
 var noise: FastNoiseLite
@@ -44,6 +54,7 @@ func _ready() -> void:
 	setup_camera()
 	setup_noise()
 	setup_systems()
+	setup_ui()
 	#setup_units()
 	update_chunks()
 
@@ -67,6 +78,26 @@ func setup_systems():
 	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
 	chunk_manager = ChunkManager.new(noise, noise_offset_vector, influence_system)
 	marching_renderer = MarchingRenderer.new(CONFIGURATIONS, grid_scale, grid_offset_vector)
+	building_system = BuildingSystem.new(influence_system, chunk_manager, world_to_grid, grid_to_world, self, building_definitions)
+	
+	
+func setup_ui():
+	canvas_layer = CanvasLayer.new()
+	add_child(canvas_layer)
+	setup_hotbar_ui()
+
+
+func setup_hotbar_ui():
+	hotbar = hotbar_scene.instantiate()
+	canvas_layer.add_child(hotbar)
+	hotbar.initialize(building_system)
+	hotbar.building_selected.connect(_on_building_selected)
+
+
+func _on_building_selected(building_type: BuildingSystem.BuildingType):
+	building_mode = true
+	print("Selected building: ", building_definitions.get_building_data(building_type).building_name)
+
 
 func setup_units():
 	for i in range(0, 10):
@@ -83,6 +114,8 @@ func paint(delta: float):
 		var grid_pos = world_to_grid(world_pos)
 		add_influence(grid_pos, paint_strength)
 
+func grid_to_world(grid_pos: Vector2i) -> Vector2:
+	return Vector2(grid_pos.x, grid_pos.y) * grid_scale + grid_offset_vector
 
 func spawn_unit(pos: Vector2):
 	var unit = unit_scene.instantiate()
@@ -98,9 +131,16 @@ func _input(event):
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
-				start_painting(influence_system.influence_strength)
+				if building_mode:
+					try_place_building()
+				else:
+					start_painting(influence_system.influence_strength)
 			MOUSE_BUTTON_RIGHT:
-				start_painting(-influence_system.influence_strength)
+				if building_mode:
+					building_mode = false
+				else:
+					start_painting(-influence_system.influence_strength)
+				
 	
 	elif event is InputEventKey and event.pressed:
 		match event.keycode:
@@ -111,6 +151,15 @@ func _input(event):
 	if painting:
 		if event is InputEventMouseButton and not event.pressed:
 			painting = false
+
+func try_place_building():
+	var world_pos = get_global_mouse_position()
+	
+	if building_system.place_building(building_system.selected_building_type, world_pos):
+		print("Building placed successfully!")
+		hotbar.update_hotbar_display()
+	else:
+		print("Cannot place building here!")
 
 func start_painting(strength: float):
 	paint_strength = strength
@@ -201,7 +250,24 @@ func _draw() -> void:
 		dot_size, dot_color_filled, dot_color_empty,
 		line_color, influence_color_positive, influence_color_negative, camera_zoom
 	)
+	if building_mode:
+		draw_building_preview()
 
+
+func draw_building_preview():
+	var world_pos = get_global_mouse_position()
+	var building_def = building_system.get_selected_building_data()
+	
+	# Check if can place
+	var can_place = building_system.can_place_building(building_system.selected_building_type, world_pos)
+	var color = Color.GREEN if can_place else Color.RED
+	color.a = 0.5
+	
+	# Draw building preview circle
+	draw_circle(world_pos, building_def.influence_radius * grid_scale, color)
+	
+	# Draw building icon/placeholder
+	draw_circle(world_pos, 10, Color.WHITE)
 # Public interface
 func increment_noise_offset():
 	noise_offset_vector += Vector2(1, 1)

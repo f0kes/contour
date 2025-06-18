@@ -1,15 +1,20 @@
-[gd_scene load_steps=4 format=3 uid="uid://ej7cdlfoyv2q"]
+[gd_scene load_steps=6 format=3 uid="uid://ej7cdlfoyv2q"]
 
 [ext_resource type="Script" uid="uid://cqraw4li30kd2" path="res://scripts/marching_squares_git/root.gd" id="1_0wsuo"]
 [ext_resource type="Script" uid="uid://clufynpfjbe7y" path="res://scripts/marching_squares_git/marching_sqr_main.gd" id="2_x1ch5"]
 [ext_resource type="PackedScene" uid="uid://dbpy0w0g8o4cl" path="res://scenes/unit.tscn" id="3_x1ch5"]
+[ext_resource type="PackedScene" uid="uid://bkjh3v4n5l6m7" path="res://scenes/UI/Hotbar.tscn" id="4_gx8eb"]
+[ext_resource type="Resource" uid="uid://dysvdh511a3c3" path="res://resources/buildings/default_def.tres" id="4_iaae0"]
 
 [node name="MarchingSquares" type="Node2D"]
 script = ExtResource("1_0wsuo")
 
 [node name="MarchingSquaresGit" type="Node2D" parent="."]
+position = Vector2(0, -1)
 script = ExtResource("2_x1ch5")
 unit_scene = ExtResource("3_x1ch5")
+hotbar_scene = ExtResource("4_gx8eb")
+building_definitions = ExtResource("4_iaae0")
 size_x = 2560
 size_y = 2560
 metadata/_custom_type_script = "uid://clufynpfjbe7y"

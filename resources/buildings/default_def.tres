@@ -1,0 +1,84 @@
+[gd_resource type="Resource" script_class="BuildingDefinitions" load_steps=13 format=3 uid="uid://dysvdh511a3c3"]
+
+[ext_resource type="Script" uid="uid://i7y2nyu3l61c" path="res://scripts/buildings/BuildingData.gd" id="1_61ryl"]
+[ext_resource type="Texture2D" uid="uid://de3q55wafrc7d" path="res://sprites/factory.png" id="2_qdle0"]
+[ext_resource type="Script" uid="uid://d058gibt0areh" path="res://scripts/buildings/BuildingDefinitions.gd" id="2_uixnt"]
+[ext_resource type="Texture2D" uid="uid://c7xvt67srtyev" path="res://sprites/building (1).png" id="3_gqht3"]
+[ext_resource type="Texture2D" uid="uid://cajn3xgfxxrhr" path="res://sprites/school.png" id="4_bwlte"]
+[ext_resource type="Texture2D" uid="uid://b3licbcusc5wx" path="res://sprites/pickaxe.png" id="5_x67q4"]
+[ext_resource type="Texture2D" uid="uid://dmh0p0x0tvsw2" path="res://sprites/mining-industry.png" id="6_k4tv5"]
+
+[sub_resource type="Resource" id="Resource_61ryl"]
+script = ExtResource("1_61ryl")
+type = 0
+building_name = "Factory"
+description = "A building"
+icon = ExtResource("2_qdle0")
+cost = 50
+influence_radius = 8.0
+influence_strength = 15.0
+build_time = 1.0
+scale = 1.0
+color_tint = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://i7y2nyu3l61c"
+
+[sub_resource type="Resource" id="Resource_02h0h"]
+script = ExtResource("1_61ryl")
+type = 1
+building_name = "Building"
+description = "A building"
+icon = ExtResource("3_gqht3")
+cost = 50
+influence_radius = 8.0
+influence_strength = 15.0
+build_time = 1.0
+scale = 1.0
+color_tint = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://i7y2nyu3l61c"
+
+[sub_resource type="Resource" id="Resource_jfokt"]
+script = ExtResource("1_61ryl")
+type = 2
+building_name = "Building"
+description = "A building"
+icon = ExtResource("4_bwlte")
+cost = 50
+influence_radius = 8.0
+influence_strength = 15.0
+build_time = 1.0
+scale = 1.0
+color_tint = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://i7y2nyu3l61c"
+
+[sub_resource type="Resource" id="Resource_3rs32"]
+script = ExtResource("1_61ryl")
+type = 3
+building_name = "Building"
+description = "A building"
+icon = ExtResource("5_x67q4")
+cost = 50
+influence_radius = 8.0
+influence_strength = 15.0
+build_time = 1.0
+scale = 1.0
+color_tint = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://i7y2nyu3l61c"
+
+[sub_resource type="Resource" id="Resource_eo843"]
+script = ExtResource("1_61ryl")
+type = 4
+building_name = "Building"
+description = "A building"
+icon = ExtResource("6_k4tv5")
+cost = 50
+influence_radius = 8.0
+influence_strength = 15.0
+build_time = 1.0
+scale = 1.0
+color_tint = Color(1, 1, 1, 1)
+metadata/_custom_type_script = "uid://i7y2nyu3l61c"
+
+[resource]
+script = ExtResource("2_uixnt")
+buildings = Array[ExtResource("1_61ryl")]([SubResource("Resource_61ryl"), SubResource("Resource_02h0h"), SubResource("Resource_jfokt"), SubResource("Resource_3rs32"), SubResource("Resource_eo843")])
+metadata/_custom_type_script = "uid://d058gibt0areh"

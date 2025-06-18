@@ -109,7 +109,7 @@ func build_dots_mesh(
 			var value = chunk_manager.get_raw_value_at(x, y, mip_level)
 			var color = dot_color_filled if value > 0 else dot_color_empty
 			var center = Vector2(x, y) * grid_scale + grid_offset_vector
-			var this_dot_size = max(dot_size / camera_zoom * abs(value), 2 / camera_zoom)
+			var this_dot_size = max(dot_size / camera_zoom , 2 / camera_zoom)
 			#var this_dot_size = dot_size
 			#this_dot_size = min(this_dot_size, 7)
 			# Create circle vertices

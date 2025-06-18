@@ -23,6 +23,7 @@ class RadiantSource:
 	var strength: float
 	var radius: float
 	var previous_position: Vector2i
+	var pos_changed: bool = false
 	
 	func _init(p_id: int, p_node: Node2D, p_strength: float, p_radius: float):
 		id = p_id
@@ -51,7 +52,11 @@ func update_radiants():
 	
 	for radiant in radiants.values():
 		var current_pos = Vector2i(radiant.node.global_position)
-		
+		if current_pos == radiant.previous_position:
+			radiant.pos_changed = false
+			radiant.previous_position = current_pos
+			continue
+		radiant.pos_changed = true
 		# Always recalculate influence (could optimize to only do when position changed)
 		var grid_pos = world_to_grid.call(current_pos)
 		var radius = int(radiant.radius)
