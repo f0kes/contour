@@ -11,19 +11,27 @@ class_name MarchingSquaresGit
 @export var dot_size: float = 2.5
 @export var grid_offset_vector: Vector2 = Vector2(75, 75)
 
+@export var player_fraction: FractionSystem.FractionType = FractionSystem.FractionType.RED
+
+
 # Color configuration
 @export_group("Colors")
 @export var dot_color_filled: Color = Color.RED
 @export var dot_color_empty: Color = Color.BLUE
 @export var line_color: Color = Color.WHITE
-@export var influence_color_positive: Color = Color.RED
-@export var influence_color_negative: Color = Color.BLUE
+
+@export var paint_strength: float = 5.0
 
 
 # Systems
+var influence_map: InfluenceMap
+var paint_system: PaintSystem
+var radiant_system: RadiantSystem
+
+var fraction_system: FractionSystem
 var camera_controller: CameraController
-var influence_system: InfluenceSystem
-var chunk_manager: ChunkManager
+
+
 var marching_renderer: MarchingRenderer
 
 var canvas_layer: CanvasLayer
@@ -39,7 +47,6 @@ var noise_offset_vector: Vector2 = Vector2.ZERO
 
 # Painting
 var painting: bool = false
-var paint_strength: float = 5.0
 
 # Marching squares configurations
 const CONFIGURATIONS = {
@@ -56,7 +63,7 @@ func _ready() -> void:
 	setup_systems()
 	setup_ui()
 	#setup_units()
-	update_chunks()
+	#update_chunks()
 
 func setup_camera():
 	var camera = Camera2D.new()
@@ -64,7 +71,7 @@ func setup_camera():
 	camera.enabled = true
 	camera_controller = CameraController.new(camera, update_chunks)
 	camera.zoom = Vector2(1., 1.2)
-	camera.position = Vector2(size_x * grid_scale / 2, size_y * grid_scale / 2)
+	#camera.position = Vector2(size_x * grid_scale / 2, size_y * grid_scale / 2)
 
 	camera_controller.zoom_disabled = false
 
@@ -75,10 +82,16 @@ func setup_noise():
 	noise.frequency = 0.05
 
 func setup_systems():
-	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
-	chunk_manager = ChunkManager.new(noise, noise_offset_vector, influence_system)
-	marching_renderer = MarchingRenderer.new(CONFIGURATIONS, grid_scale, grid_offset_vector)
-	building_system = BuildingSystem.new(influence_system, chunk_manager, world_to_grid, grid_to_world, self, building_definitions)
+	influence_map = InfluenceMap.new()
+
+	fraction_system = FractionSystem.new() # TODO: Pass fraction data from here, instead of initializing there
+	paint_system = PaintSystem.new(influence_map)
+	radiant_system = RadiantSystem.new(influence_map)
+	
+	influence_map.initialize_with_multi_faction_noise(size_x, size_y, fraction_system.fraction_colors.keys())
+	
+	marching_renderer = MarchingRenderer.new(CONFIGURATIONS, grid_scale, grid_offset_vector, fraction_system)
+	building_system = BuildingSystem.new(influence_map, radiant_system, self, building_definitions)
 	
 	
 func setup_ui():
@@ -104,7 +117,7 @@ func setup_units():
 		spawn_unit(Vector2(randf_range(0, size_x * grid_scale), randf_range(0, size_y * grid_scale)))
 
 func _process(delta: float) -> void:
-	influence_system.update(delta)
+	#TODO: Add radiant system update
 	paint(delta)
 	update_chunks()
 
@@ -112,7 +125,7 @@ func paint(delta: float):
 	if painting:
 		var world_pos = get_global_mouse_position()
 		var grid_pos = world_to_grid(world_pos)
-		add_influence(grid_pos, paint_strength)
+		paint_influence(grid_pos, paint_strength)
 
 func grid_to_world(grid_pos: Vector2i) -> Vector2:
 	return Vector2(grid_pos.x, grid_pos.y) * grid_scale + grid_offset_vector
@@ -121,7 +134,7 @@ func spawn_unit(pos: Vector2):
 	var unit = unit_scene.instantiate()
 	unit.global_position = pos
 	add_child(unit)
-	influence_system.add_radiant(unit, 10.0, 5.0)
+	#todo: process radiant
 
 func _input(event):
 	# Handle camera input first
@@ -134,18 +147,16 @@ func _input(event):
 				if building_mode:
 					try_place_building()
 				else:
-					start_painting(influence_system.influence_strength)
+					start_painting(paint_strength)
 			MOUSE_BUTTON_RIGHT:
 				if building_mode:
 					building_mode = false
 				else:
-					start_painting(-influence_system.influence_strength)
+					start_painting(-paint_strength)
 				
 	
 	elif event is InputEventKey and event.pressed:
 		match event.keycode:
-			KEY_R:
-				influence_system.initialize_matrix()
 			KEY_1:
 				spawn_unit(get_global_mouse_position())
 	if painting:
@@ -155,7 +166,7 @@ func _input(event):
 func try_place_building():
 	var world_pos = get_global_mouse_position()
 	
-	if building_system.place_building(building_system.selected_building_type, world_pos):
+	if building_system.place_building(building_system.selected_building_type, world_pos, player_fraction):
 		print("Building placed successfully!")
 		hotbar.update_hotbar_display()
 	else:
@@ -171,84 +182,43 @@ func world_to_grid(world_pos: Vector2) -> Vector2i:
 	var grid_pos = local_pos / grid_scale
 	return Vector2i(int(grid_pos.x), int(grid_pos.y))
 
-func add_influence(center: Vector2i, strength: float):
-	var affected_chunks = influence_system.add_influence(center, strength)
-	
+func paint_influence(center: Vector2i, strength: float):
+	var _affected_chunks = paint_system.paint_influence(center, strength)
 
-func mark_dirty(coord: Vector2i):
-	var chunk_coord = chunk_manager.world_to_chunk(coord)
-	if chunk_coord not in chunk_manager.dirty_chunks:
-		chunk_manager.dirty_chunks.append(chunk_coord)
+	
 func update_chunks() -> void:
-	ensure_visible_chunks_exist()
-	update_dirty_chunks()
+	#update_dirty_chunks()
 	queue_redraw()
 
-func ensure_visible_chunks_exist():
-	var chunks_needed = get_chunks_in_view()
-	var mip_level = camera_controller.get_mip_level()
-	var i = 0
-	for chunk_coord in chunks_needed:
-		if i >= chunk_manager.max_concurrent_chunks:
-			break
-		i += 1
-		var chunk_key = str(chunk_coord) + "_" + str(mip_level)
-		if chunk_key not in chunk_manager.chunk_matrix_cache:
-			chunk_manager.generate_chunk(chunk_coord, mip_level)
+# func ensure_visible_chunks_exist():
+# 	var chunks_needed = get_chunks_in_view()
+# 	var mip_level = camera_controller.get_mip_level()
+# 	var i = 0
+# 	for chunk_coord in chunks_needed:
+# 		if i >= chunk_manager.max_concurrent_chunks:
+# 			break
+# 		i += 1
+# 		var chunk_key = str(chunk_coord) + "_" + str(mip_level)
+# 		if chunk_key not in chunk_manager.chunk_matrix_cache:
+# 			chunk_manager.generate_chunk(chunk_coord, mip_level)
 
-func update_dirty_chunks():
-	var mip_level = camera_controller.get_mip_level()
-	for chunk_coord in chunk_manager.dirty_chunks:
-		chunk_manager.generate_chunk(chunk_coord, mip_level)
-	chunk_manager.dirty_chunks.clear()
-	queue_redraw()
+# func update_dirty_chunks():
+# 	var mip_level = camera_controller.get_mip_level()
+# 	for chunk_coord in chunk_manager.dirty_chunks:
+# 		chunk_manager.generate_chunk(chunk_coord, mip_level)
+# 	chunk_manager.dirty_chunks.clear()
+# 	queue_redraw()
 
-func get_chunks_in_view() -> Array:
-	var bounds = get_visible_grid_bounds(1)
-	var mip_level = camera_controller.get_mip_level()
-	
-	var chunks_needed = []
-	var chunk_min = chunk_manager.world_to_chunk(Vector2i(bounds.min_x * mip_level, bounds.min_y * mip_level))
-	var chunk_max = chunk_manager.world_to_chunk(Vector2i(bounds.max_x * mip_level, bounds.max_y * mip_level))
-	
-	for x in range(chunk_min.x, chunk_max.x + 1):
-		for y in range(chunk_min.y, chunk_max.y + 1):
-			chunks_needed.append(Vector2i(x, y))
-	
-	return chunks_needed
-
-
-func get_visible_grid_bounds(padding: int) -> Dictionary:
-	var viewport_size = get_viewport().get_visible_rect().size
-	var camera = camera_controller.camera
-	var camera_pos = camera.global_position
-	var mip_level = camera_controller.get_mip_level()
-	var zoom = camera.zoom.x
-
-	
-	var half_viewport = viewport_size / (2.0 * zoom)
-	var world_top_left = camera_pos - half_viewport
-	var world_bottom_right = camera_pos + half_viewport
-	
-	var grid_top_left = world_to_grid(world_top_left)
-	var grid_bottom_right = world_to_grid(world_bottom_right)
-	
-	return {
-		"min_x": grid_top_left.x - padding,
-		"min_y": grid_top_left.y - padding,
-		"max_x": grid_bottom_right.x + padding,
-		"max_y": grid_bottom_right.y + padding
-	}
 
 func _draw() -> void:
 	var mip_level = camera_controller.get_mip_level()
-	var bounds = get_visible_grid_bounds(2)
+	var bounds = influence_map.get_visible_grid_bounds(2, get_viewport(), camera_controller.camera, grid_scale)
 	var camera_zoom = camera_controller.zoom_factor
 	marching_renderer.draw_all(
-		self, bounds, mip_level,
-		chunk_manager, influence_system,
-		dot_size, dot_color_filled, dot_color_empty,
-		line_color, influence_color_positive, influence_color_negative, camera_zoom
+		self, get_viewport(), camera_controller.camera, mip_level,
+		influence_map,
+		dot_size,
+		line_color, camera_zoom
 	)
 	if building_mode:
 		draw_building_preview()
@@ -259,7 +229,7 @@ func draw_building_preview():
 	var building_def = building_system.get_selected_building_data()
 	
 	# Check if can place
-	var can_place = building_system.can_place_building(building_system.selected_building_type, world_pos)
+	var can_place = building_system.can_place_building(building_system.selected_building_type, world_pos, player_fraction)
 	var color = Color.GREEN if can_place else Color.RED
 	color.a = 0.5
 	
@@ -272,11 +242,6 @@ func draw_building_preview():
 func increment_noise_offset():
 	noise_offset_vector += Vector2(1, 1)
 
-func set_size(new_size_x: int, new_size_y: int):
-	size_x = new_size_x
-	size_y = new_size_y
-	influence_system = InfluenceSystem.new(size_x, size_y, world_to_grid, mark_dirty)
-	update_chunks()
 
 func get_zoom_info() -> String:
 	return "Zoom: %.2f, Mip Level: %d" % [camera_controller.zoom_factor, camera_controller.get_mip_level()]

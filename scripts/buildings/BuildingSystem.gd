@@ -28,22 +28,20 @@ var inventory: Dictionary = {} # BuildingType -> int (count)
 var placed_buildings: Array[PlacedBuilding] = []
 var selected_building_type: BuildingType = BuildingType.HOUSE
 
+var influnce_map: InfluenceMap
+var radiant_system: RadiantSystem
+
 # References to other systems
-var influence_system: InfluenceSystem
-var chunk_manager: ChunkManager
-var world_to_grid: Callable
-var grid_to_world: Callable
+
 var parent_node: Node2D # For spawning building nodes
 
 var occupation_set: Dictionary[Vector2i, bool] = {}
 var occupation_chunk: float = 300
 var occupation_radius: float = 150
 
-func _init(p_influence_system: InfluenceSystem, p_chunk_manager: ChunkManager, p_world_to_grid: Callable, p_grid_to_world: Callable, p_parent_node: Node2D, p_building_definitions: BuildingDefinitions):
-	influence_system = p_influence_system
-	chunk_manager = p_chunk_manager
-	world_to_grid = p_world_to_grid
-	grid_to_world = p_grid_to_world
+func _init(p_influence_map: InfluenceMap, p_radiant_system: RadiantSystem, p_parent_node: Node2D, p_building_definitions: BuildingDefinitions):
+	influnce_map = p_influence_map
+	radiant_system = p_radiant_system
 	parent_node = p_parent_node
 	building_definitions = p_building_definitions
 	initialize_inventory()
@@ -55,14 +53,14 @@ func initialize_inventory():
 	inventory[BuildingType.MINE] = 15
 	inventory[BuildingType.OIL] = 1
 
-func can_place_building(building_type: BuildingType, world_position: Vector2) -> bool:
+func can_place_building(building_type: BuildingType, world_position: Vector2, fraction: FractionSystem.FractionType) -> bool:
 	# Check if we have the building in inventory
 	if not inventory.has(building_type) or inventory[building_type] <= 0:
 		return false
 	
 	# Check if position is on controlled land (positive influence)
-	var grid_pos = world_to_grid.call(world_position)
-	var influence = influence_system.sample_influence_mipped(grid_pos.x, grid_pos.y, 1)
+	var grid_pos = influnce_map.world_to_grid(world_position.x, world_position.y)
+	var influence = influnce_map.get_faction_dominance(grid_pos.x, grid_pos.y, fraction, 0)
 	if influence <= 0:
 		return false
 	
@@ -74,14 +72,15 @@ func can_place_building(building_type: BuildingType, world_position: Vector2) ->
 	for building in placed_buildings:
 		if building.position.distance_to(world_position) < occupation_radius:
 			return false
+		
 	
 	return true
 
 func get_occupation_place(pos: Vector2) -> Vector2i:
 	return Vector2i(floor(pos.x / occupation_chunk), floor(pos.y / occupation_chunk))
 
-func place_building(building_type: BuildingType, world_position: Vector2) -> bool:
-	if not can_place_building(building_type, world_position):
+func place_building(building_type: BuildingType, world_position: Vector2, fraction: FractionSystem.FractionType) -> bool:
+	if not can_place_building(building_type, world_position, fraction):
 		return false
 	
 	var building_data = building_definitions.get_building_data(building_type)
@@ -103,7 +102,7 @@ func place_building(building_type: BuildingType, world_position: Vector2) -> boo
 	parent_node.add_child(building_node)
 	
 	# Add to influence system
-	var radiant_id = influence_system.add_radiant(
+	var radiant_id = radiant_system.add_radiant(
 		building_node,
 		building_data.influence_strength,
 		building_data.influence_radius

@@ -2,6 +2,7 @@ extends RefCounted
 class_name InfluenceSystem
 
 var influence_matrix: Array = []
+var fraction_influence_matrices: Array = []
 var size_x: int
 var size_y: int
 var influence_strength: float = 1.0

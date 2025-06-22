@@ -58,7 +58,7 @@ func handle_input(event: InputEvent) -> bool:
 	return false
 
 func get_mip_level() -> int:
-	if zoom_factor > 2.0: return 1
+	if zoom_factor > 2.0: return 0
 	elif zoom_factor > 1.0: return 1
 	elif zoom_factor > 0.5: return 2
 	elif zoom_factor > 0.25: return 4
